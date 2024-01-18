@@ -1,6 +1,6 @@
 {
   "name": "calendar",
-  "id": "1328489133822357080",
+  "id": "1329228807242129260",
   "api": "1.0.0",
   "main": "code.js",
   "capabilities": [],
@@ -11,7 +11,7 @@
   "ui": "ui.html",
   "networkAccess": {
     "allowedDomains": [
-      "https://cdn.jsdelivr.net"
+      "none"
     ]
   }
 }

@@ -1,45 +1,70 @@
 figma.showUI(__html__, { width: 340, height: 620 });
 
+
+async function main() {
+  // Start the loading state
+  figma.ui.postMessage({ type: 'loading', status: true });
+
+  try {
+    // Perform the font loading
+    await loadFonts();
+    console.log("loaded fonts!")
+    // Post-loading actions
+    // ...
+  } catch (error) {
+    console.error("Error loading fonts:", error);
+    figma.ui.postMessage({ type: 'error', message: 'Failed to load fonts.' });
+  } finally {
+    // End the loading state
+    figma.ui.postMessage({ type: 'loading', status: false });
+  }
+}
+
+main();
+
+
 figma.ui.onmessage = msg => {
   if (figma.currentPage.selection.length < 1) {
     figma.notify("Please select a calendar :)");
   } else {
     if (msg.type === 'create-calendar') {
-      updateCalendar(msg.month, msg.year, msg.weekStart);
+      updateCalendar(msg.month, msg.year, msg.weekStart)
     }
   }
-
 };
 
+const fallbackFonts = [
+  { family: "Roboto", style: "Regular" },
+  { family: "Arial", style: "Regular" },
+];
+
 async function loadFonts() {
-  // Find all text nodes
   const textNodes = figma.currentPage.findAll(node => node.type === 'TEXT') as TextNode[];
 
-  // Create a set of unique fonts
-  const uniqueFonts = new Set();
-
-  // Iterate over each text node to collect unique fonts
-  textNodes.forEach(textNode => {
+  for (const textNode of textNodes) {
     const fontName = textNode.fontName;
+
     if (fontName !== figma.mixed) {
-      uniqueFonts.add(fontName);
+      try {
+        await figma.loadFontAsync(fontName);
+      } catch (error) {
+        console.error('Error loading font:', fontName, '; Error:', error);
+        // Try loading fallback fonts
+        for (const fallbackFont of fallbackFonts) {
+          try {
+            await figma.loadFontAsync(fallbackFont);
+            console.log(`Fallback font loaded: ${fallbackFont.family}`);
+            break; // Exit loop once a fallback font is loaded
+          } catch (fallbackError) {
+            console.error('Error loading fallback font:', fallbackFont, '; Error:', fallbackError);
+          }
+        }
+      }
     }
-  });
-
-  // Load each unique font asynchronously
-  for (let font of uniqueFonts) {
-    await figma.loadFontAsync(font);
   }
-
-  // Now you can safely modify the text nodes
 }
 
-// Call the function
-loadFonts().then(() => {
-  // Perform your plugin operations here after fonts are loaded
-}).catch(err => {
-  console.error('Error loading fonts: ', err);
-});
+
 
 
 function updateCalendar(month: number, year: number, weekStart: number) {
@@ -50,7 +75,6 @@ function updateCalendar(month: number, year: number, weekStart: number) {
   let firstDayOfWeek = new Date(year, month - 1, 1).getDay();
   const daysInPreviousMonth = new Date(year, month - 1, 0).getDate();
 
-  // Adjust firstDayOfWeek based on the selected start of the week
   if (weekStart === 1 && firstDayOfWeek === 0) {
     firstDayOfWeek = 7;
   }
@@ -59,16 +83,16 @@ function updateCalendar(month: number, year: number, weekStart: number) {
   let day = 1;
   let prevMonthDay = daysInPreviousMonth - firstDayOfWeek + 1;
 
-  const headerNode = figma.currentPage.selection[0].findAll(node =>
+  const headerNode = figma.currentPage.selection[0].findAll((node: any) =>
     node.type === 'TEXT' && node.name === 'Month YYYY'
   ) as TextNode[];
 
-  if (headerNode.length > 1) {
+  if (headerNode.length > 0) {
     headerNode[0].characters = `${monthNames[month - 1]} ${year}`
   }
 
 
-  const textNodes = figma.currentPage.selection[0].findAll(node =>
+  const textNodes = figma.currentPage.selection[0].findAll((node: any) =>
     node.type === 'TEXT' && node.parent && node.parent.name === '.calendar-day'
   ) as TextNode[];
 
@@ -78,23 +102,19 @@ function updateCalendar(month: number, year: number, weekStart: number) {
   } else {
     textNodes.forEach((textNode: TextNode, index: number) => {
       if (index < firstDayOfWeek) {
-        // Fill with days from the previous month
         textNode.characters = `${prevMonthDay}`;
         prevMonthDay++;
       } else if (day <= daysInMonth) {
-        // Fill with days from the current month
         textNode.characters = `${day}`;
         day++;
       } else {
-        // Start filling with days from the next month
         let nextMonthDay = day - daysInMonth;
         textNode.characters = `${nextMonthDay}`;
         day++;
       }
     });
-
+    figma.notify("Updated calendar 🎉")
   }
-
 
 }
 
