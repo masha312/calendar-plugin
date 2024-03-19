@@ -65,21 +65,17 @@ async function loadFonts() {
 }
 
 
-
-
 function updateCalendar(month: number, year: number, weekStart: number) {
   const monthNames = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 
   const daysInMonth = new Date(year, month, 0).getDate();
+
   let firstDayOfWeek = new Date(year, month - 1, 1).getDay();
+
+  firstDayOfWeek = (firstDayOfWeek - weekStart + 7) % 7;
+
   const daysInPreviousMonth = new Date(year, month - 1, 0).getDate();
-
-  if (weekStart === 1 && firstDayOfWeek === 0) {
-    firstDayOfWeek = 7;
-  }
-  firstDayOfWeek -= weekStart;
-
   let day = 1;
   let prevMonthDay = daysInPreviousMonth - firstDayOfWeek + 1;
 
@@ -88,35 +84,32 @@ function updateCalendar(month: number, year: number, weekStart: number) {
   ) as TextNode[];
 
   if (headerNode.length > 0) {
-    headerNode[0].characters = `${monthNames[month - 1]} ${year}`
+    headerNode[0].characters = `${monthNames[month - 1]} ${year}`;
   }
-
 
   const textNodes = figma.currentPage.selection[0].findAll((node: any) =>
     node.type === 'TEXT' && node.parent && node.parent.name === '.calendar-day'
   ) as TextNode[];
 
-
   if (textNodes.length < 1) {
-    figma.notify("Can't find any layers with name '.calendar-day' :( ")
+    figma.notify("Can't find any layers named '.calendar-day' :(");
   } else {
     textNodes.forEach((textNode: TextNode, index: number) => {
       if (index < firstDayOfWeek) {
-        textNode.characters = `${prevMonthDay}`;
-        prevMonthDay++;
-      } else if (day <= daysInMonth) {
-        textNode.characters = `${day}`;
-        day++;
-      } else {
-        let nextMonthDay = day - daysInMonth;
-        textNode.characters = `${nextMonthDay}`;
-        day++;
+        textNode.characters = `${prevMonthDay++}`;
+      }
+      else if (day <= daysInMonth) {
+        textNode.characters = `${day++}`;
+      }
+      else {
+        textNode.characters = `${index - firstDayOfWeek - daysInMonth + 1}`;
       }
     });
-    figma.notify("Updated calendar 🎉")
+    figma.notify("Updated calendar 🎉");
   }
-
 }
+
+
 
 
 
